@@ -1,56 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chromium } from "@playwright/test";
+import chromium from "@sparticuz/chromium";
+import type { Browser } from "playwright-core";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "@/utils/s3";
-import chromiumPath from "@sparticuz/chromium";
 
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
+  let browser: Browser | null = null;
+
   try {
     const { url } = await request.json();
     if (!url) {
       return NextResponse.json({ message: "URL is required" }, { status: 400 });
     }
 
-    // Get the proper executable path based on environment
-    const executablePath =
-      process.env.NODE_ENV === "development"
-        ? undefined
-        : await chromiumPath.executablePath();
+    if (process.env.NODE_ENV === "development") {
+      // Local development setup
+      const { chromium: playwrightChromium } = require("playwright");
+      browser = await playwrightChromium.launch({
+        headless: true,
+      });
 
-    // Launch browser with specific configurations for Vercel
-    const browser = await chromium.launch({
-      headless: true,
-      executablePath,
-      args: [
-        "--disable-gpu",
-        "--disable-dev-shm-usage",
-        "--disable-setuid-sandbox",
-        "--no-sandbox",
-      ],
-    });
+      const context = await browser?.newContext({
+        viewport: { width: 1280, height: 720 },
+      });
+      const page = await context?.newPage();
 
-    // Create new context with viewport
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 720 },
-    });
-
-    // Create new page
-    const page = await context.newPage();
-
-    try {
       // Navigate to URL with timeout
-      await page.goto(url, {
+      await page?.goto(url, {
         waitUntil: "networkidle",
         timeout: 30000,
       });
 
       // Take full page screenshot
-      const screenshot = await page.screenshot({
+      const screenshot = await page?.screenshot({
         fullPage: true,
-        type: "png",
       });
+
+      await context?.close();
+      await browser?.close();
 
       // Generate unique filename with folder structure
       const filename = `link-preview/screenshot-${Date.now()}.png`;
@@ -65,16 +54,63 @@ export async function POST(request: NextRequest) {
         })
       );
 
-      // Generate S3 URL
       const screenshotUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
 
       return NextResponse.json({
         message: "Screenshot captured successfully",
         url: screenshotUrl,
       });
-    } finally {
-      // Make sure browser is closed even if there's an error
-      await browser.close();
+    } else {
+      // Production Vercel setup
+      const { default: puppeteer } = await import("puppeteer-core");
+      //@ts-ignore
+      browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: {
+          width: 1280,
+          height: 720,
+          deviceScaleFactor: 1,
+        },
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+        ignoreHTTPSErrors: true,
+      });
+
+      const page = await browser?.newPage();
+
+      // Navigate to URL with timeout
+      await page?.goto(url, {
+        //@ts-ignore
+        waitUntil: "networkidle0",
+        timeout: 30000,
+      });
+
+      // Take full page screenshot
+      const screenshot = await page?.screenshot({
+        fullPage: true,
+      });
+
+      await browser?.close();
+
+      // Generate unique filename with folder structure
+      const filename = `link-preview/screenshot-${Date.now()}.png`;
+
+      // Upload to S3
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: filename,
+          Body: screenshot,
+          ContentType: "image/png",
+        })
+      );
+
+      const screenshotUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+
+      return NextResponse.json({
+        message: "Screenshot captured successfully",
+        url: screenshotUrl,
+      });
     }
   } catch (error) {
     console.error("Screenshot error:", error);
@@ -86,5 +122,9 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  } finally {
+    if (browser) {
+      await browser.close().catch(console.error);
+    }
   }
 }

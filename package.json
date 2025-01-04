@@ -11,11 +11,12 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.722.0",
     "@aws-sdk/lib-storage": "^3.722.0",
-    "@playwright/browser-chromium": "^1.49.1",
-    "@playwright/test": "^1.42.0",
-    "chrome-aws-lambda": "^10.1.0",
+    "@playwright/browser-chromium": "^1.42.0",
     "@sparticuz/chromium": "^119.0.0",
+    "chrome-aws-lambda": "^10.1.0",
     "next": "14.2.16",
+    "playwright-core": "^1.42.0",
+    "puppeteer-core": "^19.4.0",
     "react": "^18",
     "react-dom": "^18"
   },
@@ -25,6 +26,7 @@
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.2.16",
+    "playwright": "^1.42.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"

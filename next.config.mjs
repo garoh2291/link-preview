@@ -5,14 +5,8 @@ const nextConfig = {
       bodySizeLimit: "10mb",
     },
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = [
-        ...(config.externals || []),
-        "@sparticuz/chromium",
-        "chrome-aws-lambda",
-      ];
-    }
+  webpack: (config) => {
+    config.externals = [...(config.externals || []), "chrome-aws-lambda"];
     return config;
   },
 };
