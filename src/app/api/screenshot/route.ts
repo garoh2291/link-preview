@@ -59,17 +59,18 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Production Vercel setup
-      const execPath = await chromium.executablePath(
-        "/var/task/node_modules/@sparticuz/chromium/bin"
-      );
+      const executablePath = await chromium.executablePath();
 
       const puppeteer = await import("puppeteer-core");
       browser = (await puppeteer.default.launch({
-        args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
-        defaultViewport: chromium.defaultViewport,
-        executablePath: execPath,
-        headless: chromium.headless,
-        ignoreDefaultArgs: false,
+        args: chromium.args,
+        defaultViewport: {
+          width: 1280,
+          height: 720,
+          deviceScaleFactor: 1,
+        },
+        executablePath,
+        headless: true,
       })) as PuppeteerBrowser;
 
       const page = await browser.newPage();
