@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import chromium from "@sparticuz/chromium";
 import type { Browser as PlaywrightBrowser } from "playwright";
 import type { Browser as PuppeteerBrowser } from "puppeteer-core";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -59,18 +58,57 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Production Vercel setup
-      const executablePath = await chromium.executablePath();
-
+      const chromium = await import("@sparticuz/chromium");
       const puppeteer = await import("puppeteer-core");
+
+      const args = [
+        "--autoplay-policy=user-gesture-required",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-breakpad",
+        "--disable-client-side-phishing-detection",
+        "--disable-component-update",
+        "--disable-default-apps",
+        "--disable-dev-shm-usage",
+        "--disable-domain-reliability",
+        "--disable-extensions",
+        "--disable-features=AudioServiceOutOfProcess",
+        "--disable-hang-monitor",
+        "--disable-ipc-flooding-protection",
+        "--disable-notifications",
+        "--disable-offer-store-unmasked-wallet-cards",
+        "--disable-popup-blocking",
+        "--disable-print-preview",
+        "--disable-prompt-on-repost",
+        "--disable-renderer-backgrounding",
+        "--disable-setuid-sandbox",
+        "--disable-speech-api",
+        "--disable-sync",
+        "--hide-scrollbars",
+        "--ignore-gpu-blacklist",
+        "--metrics-recording-only",
+        "--mute-audio",
+        "--no-default-browser-check",
+        "--no-first-run",
+        "--no-pings",
+        "--no-sandbox",
+        "--no-zygote",
+        "--password-store=basic",
+        "--use-gl=swiftshader",
+        "--use-mock-keychain",
+      ];
+
       browser = (await puppeteer.default.launch({
-        args: chromium.args,
+        args,
         defaultViewport: {
           width: 1280,
           height: 720,
           deviceScaleFactor: 1,
         },
-        executablePath,
+        executablePath: await chromium.default.executablePath(),
         headless: true,
+        ignoreHTTPSErrors: true,
       })) as PuppeteerBrowser;
 
       const page = await browser.newPage();
@@ -82,6 +120,7 @@ export async function POST(request: NextRequest) {
 
       const screenshot = await page.screenshot({
         fullPage: true,
+        type: "png",
       });
 
       await browser.close();

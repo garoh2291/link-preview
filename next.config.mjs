@@ -6,7 +6,11 @@ const nextConfig = {
     },
   },
   webpack: (config) => {
-    config.externals = [...(config.externals || []), "chrome-aws-lambda"];
+    // Add this to handle binary files
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "chrome-aws-lambda": "chrome-aws-lambda/lambda",
+    };
     return config;
   },
 };
