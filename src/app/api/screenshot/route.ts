@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chromium } from "@playwright/test";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "@/utils/s3";
+import path from "path";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,19 +11,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "URL is required" }, { status: 400 });
     }
 
-    // Launch browser
-    const browser = await chromium.launch();
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 720 }, // Set default viewport
+    // Launch browser with specific executable path for Vercel
+    const browser = await chromium.launch({
+      executablePath:
+        process.env.NODE_ENV === "production"
+          ? path.join(
+              process.cwd(),
+              "node_modules",
+              "@playwright/browser-chromium",
+              "chrome-linux",
+              "chrome"
+            )
+          : undefined,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
+
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 720 },
+    });
+
     const page = await context.newPage();
 
     // Navigate to the URL and wait for network idle
-    await page.goto(url, { waitUntil: "networkidle" });
+    await page.goto(url, {
+      waitUntil: "networkidle",
+      timeout: 30000, // Increase timeout to 30 seconds
+    });
 
     // Take full page screenshot
     const screenshot = await page.screenshot({
-      fullPage: true, // This captures the full scrollable page
+      fullPage: true,
     });
 
     // Close browser
@@ -51,7 +69,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Screenshot error:", error);
     return NextResponse.json(
-      { message: "Failed to capture screenshot" },
+      {
+        message:
+          "Failed to capture screenshot: " +
+          (error instanceof Error ? error.message : String(error)),
+      },
       { status: 500 }
     );
   }
