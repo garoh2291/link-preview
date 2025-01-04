@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "postinstall": "npx playwright install chromium --with-deps",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -12,12 +13,12 @@
     "@aws-sdk/client-s3": "^3.722.0",
     "@aws-sdk/lib-storage": "^3.722.0",
     "@playwright/browser-chromium": "^1.49.1",
-    "@playwright/test": "^1.49.1",
     "next": "14.2.16",
     "react": "^18",
     "react-dom": "^18"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

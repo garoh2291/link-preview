@@ -5,12 +5,8 @@ const nextConfig = {
       bodySizeLimit: "10mb",
     },
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = [...config.externals, "playwright-core"];
-    }
-    return config;
-  },
+  // Add Output configuration
+  output: "standalone",
 };
 
 export default nextConfig;

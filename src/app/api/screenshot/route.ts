@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { chromium } from "@playwright/test";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "@/utils/s3";
-import path from "path";
+
+export const maxDuration = 300; // This will set the maxDuration to 300 seconds
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,36 +12,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "URL is required" }, { status: 400 });
     }
 
-    // Launch browser with specific executable path for Vercel
+    // Launch browser with specific configurations for Vercel
     const browser = await chromium.launch({
-      executablePath:
-        process.env.NODE_ENV === "production"
-          ? path.join(
-              process.cwd(),
-              "node_modules",
-              "@playwright/browser-chromium",
-              "chrome-linux",
-              "chrome"
-            )
-          : undefined,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      headless: true,
+      args: [
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-setuid-sandbox",
+        "--no-sandbox",
+      ],
     });
 
+    // Create new context with viewport
     const context = await browser.newContext({
       viewport: { width: 1280, height: 720 },
     });
 
+    // Create new page
     const page = await context.newPage();
 
-    // Navigate to the URL and wait for network idle
+    // Navigate to URL with timeout
     await page.goto(url, {
       waitUntil: "networkidle",
-      timeout: 30000, // Increase timeout to 30 seconds
+      timeout: 30000,
     });
 
     // Take full page screenshot
     const screenshot = await page.screenshot({
       fullPage: true,
+      type: "png",
     });
 
     // Close browser
