@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Production Vercel setup
-      await chromium.font("/var/task/fonts/NotoSans-Regular.ttf"); // Optional: if you need font support
       const execPath = await chromium.executablePath(
         "/var/task/node_modules/@sparticuz/chromium/bin"
       );
@@ -69,7 +68,7 @@ export async function POST(request: NextRequest) {
         args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
         defaultViewport: chromium.defaultViewport,
         executablePath: execPath,
-        headless: true,
+        headless: chromium.headless,
         ignoreDefaultArgs: false,
       })) as PuppeteerBrowser;
 
