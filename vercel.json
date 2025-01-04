@@ -2,7 +2,7 @@
   "functions": {
     "app/api/screenshot/route.ts": {
       "memory": 1000,
-      "maxDuration": 60
+      "maxDuration": 59
     }
   }
 }
