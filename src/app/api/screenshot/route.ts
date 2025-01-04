@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { chromium } from "@playwright/test";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "@/utils/s3";
+import chromiumPath from "@sparticuz/chromium";
 
-export const maxDuration = 300; // This will set the maxDuration to 300 seconds
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,9 +13,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "URL is required" }, { status: 400 });
     }
 
+    // Get the proper executable path based on environment
+    const executablePath =
+      process.env.NODE_ENV === "development"
+        ? undefined
+        : await chromiumPath.executablePath();
+
     // Launch browser with specific configurations for Vercel
     const browser = await chromium.launch({
       headless: true,
+      executablePath,
       args: [
         "--disable-gpu",
         "--disable-dev-shm-usage",
@@ -31,41 +39,43 @@ export async function POST(request: NextRequest) {
     // Create new page
     const page = await context.newPage();
 
-    // Navigate to URL with timeout
-    await page.goto(url, {
-      waitUntil: "networkidle",
-      timeout: 30000,
-    });
+    try {
+      // Navigate to URL with timeout
+      await page.goto(url, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
 
-    // Take full page screenshot
-    const screenshot = await page.screenshot({
-      fullPage: true,
-      type: "png",
-    });
+      // Take full page screenshot
+      const screenshot = await page.screenshot({
+        fullPage: true,
+        type: "png",
+      });
 
-    // Close browser
-    await browser.close();
+      // Generate unique filename with folder structure
+      const filename = `link-preview/screenshot-${Date.now()}.png`;
 
-    // Generate unique filename with folder structure
-    const filename = `link-preview/screenshot-${Date.now()}.png`;
+      // Upload to S3
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: filename,
+          Body: screenshot,
+          ContentType: "image/png",
+        })
+      );
 
-    // Upload to S3
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: filename,
-        Body: screenshot,
-        ContentType: "image/png",
-      })
-    );
+      // Generate S3 URL
+      const screenshotUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
 
-    // Generate S3 URL
-    const screenshotUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
-
-    return NextResponse.json({
-      message: "Screenshot captured successfully",
-      url: screenshotUrl,
-    });
+      return NextResponse.json({
+        message: "Screenshot captured successfully",
+        url: screenshotUrl,
+      });
+    } finally {
+      // Make sure browser is closed even if there's an error
+      await browser.close();
+    }
   } catch (error) {
     console.error("Screenshot error:", error);
     return NextResponse.json(

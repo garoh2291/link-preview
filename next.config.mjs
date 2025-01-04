@@ -5,8 +5,16 @@ const nextConfig = {
       bodySizeLimit: "10mb",
     },
   },
-  // Add Output configuration
-  output: "standalone",
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [
+        ...(config.externals || []),
+        "@sparticuz/chromium",
+        "chrome-aws-lambda",
+      ];
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
