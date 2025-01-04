@@ -15,13 +15,16 @@ export default function Home() {
     setScreenshot(null);
 
     try {
-      const response = await fetch("/api/screenshot", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url }),
-      });
+      const response = await fetch(
+        "https://playwright-back.onrender.com/screenshot",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url }),
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -29,7 +32,7 @@ export default function Home() {
       }
 
       const data = await response.json();
-      setScreenshot(data.url);
+      setScreenshot(data.fileUrl);
       setUrl("");
     } catch (err) {
       setError(
