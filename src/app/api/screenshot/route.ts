@@ -59,15 +59,16 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Production Vercel setup
+      await chromium.font("/var/task/fonts/NotoSans-Regular.ttf"); // Optional: if you need font support
+      const execPath = await chromium.executablePath(
+        "/var/task/node_modules/@sparticuz/chromium/bin"
+      );
+
       const puppeteer = await import("puppeteer-core");
       browser = (await puppeteer.default.launch({
-        args: chromium.args,
-        defaultViewport: {
-          width: 1280,
-          height: 720,
-          deviceScaleFactor: 1,
-        },
-        executablePath: await chromium.executablePath(),
+        args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: execPath,
         headless: true,
         ignoreDefaultArgs: false,
       })) as PuppeteerBrowser;

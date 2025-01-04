@@ -16,7 +16,7 @@
     "chrome-aws-lambda": "^10.1.0",
     "next": "14.2.16",
     "playwright-core": "^1.42.0",
-    "puppeteer-core": "^23.11.1",
+    "puppeteer-core": "^19.4.0",
     "react": "^18",
     "react-dom": "^18"
   },
