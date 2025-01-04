@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import chromium from "@sparticuz/chromium";
-import type { Browser } from "playwright-core";
+import type { Browser as PlaywrightBrowser } from "playwright";
+import type { Browser as PuppeteerBrowser } from "puppeteer-core";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "@/utils/s3";
 
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
-  let browser: Browser | null = null;
+  let browser: PlaywrightBrowser | PuppeteerBrowser | null = null;
 
   try {
     const { url } = await request.json();
@@ -17,34 +18,30 @@ export async function POST(request: NextRequest) {
 
     if (process.env.NODE_ENV === "development") {
       // Local development setup
-      const { chromium: playwrightChromium } = require("playwright");
-      browser = await playwrightChromium.launch({
+      const playwright = await import("playwright");
+      browser = (await playwright.chromium.launch({
         headless: true,
-      });
+      })) as PlaywrightBrowser;
 
-      const context = await browser?.newContext({
+      const context = await browser.newContext({
         viewport: { width: 1280, height: 720 },
       });
-      const page = await context?.newPage();
+      const page = await context.newPage();
 
-      // Navigate to URL with timeout
-      await page?.goto(url, {
+      await page.goto(url, {
         waitUntil: "networkidle",
         timeout: 30000,
       });
 
-      // Take full page screenshot
-      const screenshot = await page?.screenshot({
+      const screenshot = await page.screenshot({
         fullPage: true,
       });
 
-      await context?.close();
-      await browser?.close();
+      await context.close();
+      await browser.close();
 
-      // Generate unique filename with folder structure
       const filename = `link-preview/screenshot-${Date.now()}.png`;
 
-      // Upload to S3
       await s3Client.send(
         new PutObjectCommand({
           Bucket: process.env.AWS_BUCKET_NAME,
@@ -62,9 +59,8 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Production Vercel setup
-      const { default: puppeteer } = await import("puppeteer-core");
-      //@ts-ignore
-      browser = await puppeteer.launch({
+      const puppeteer = await import("puppeteer-core");
+      browser = (await puppeteer.default.launch({
         args: chromium.args,
         defaultViewport: {
           width: 1280,
@@ -72,30 +68,25 @@ export async function POST(request: NextRequest) {
           deviceScaleFactor: 1,
         },
         executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
-        ignoreHTTPSErrors: true,
-      });
+        headless: true,
+        ignoreDefaultArgs: false,
+      })) as PuppeteerBrowser;
 
-      const page = await browser?.newPage();
+      const page = await browser.newPage();
 
-      // Navigate to URL with timeout
-      await page?.goto(url, {
-        //@ts-ignore
+      await page.goto(url, {
         waitUntil: "networkidle0",
         timeout: 30000,
       });
 
-      // Take full page screenshot
-      const screenshot = await page?.screenshot({
+      const screenshot = await page.screenshot({
         fullPage: true,
       });
 
-      await browser?.close();
+      await browser.close();
 
-      // Generate unique filename with folder structure
       const filename = `link-preview/screenshot-${Date.now()}.png`;
 
-      // Upload to S3
       await s3Client.send(
         new PutObjectCommand({
           Bucket: process.env.AWS_BUCKET_NAME,
